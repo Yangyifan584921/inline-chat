@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="/bootstrap/dist/css/bootstrap.css">
+    <style>
+        .user{
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="text-center">欢迎来到聊天室</h3>
+                    <button class="btn btn-success" onclick="join('green')">杀马特</button>
+                    <button class="btn btn-warning" onclick="join('red')">非主流</button>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group" id="messages" onclick="selectedUser(event)">
+
+                    </ul>
+                </div>
+                <div class="panel-footer">
+                    <form action="">
+                        <div class="form-group">
+                            <label for="content">内容</label>
+                            <input type="text" id="content" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success" onclick="send()">发言</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--客户端-->
+<!--固定的-->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    //得到ul容器
+    var messagesUl=document.querySelector('#messages');
+    var contentInput=document.querySelector('#content');
+    //引入此脚本以后，会在window增加一个io属性,也可以使用on的方法
+    var socket =io();
+    //连接函数后会执行回调函数,是测试文件，可有可无
+    /*socket.on('connect',function () {
+        socket.send('你好');
+    });*/
+    socket.on('connect',function () {
+       //想服务器发消息，消息的类型是getAllMessages（自定义，想叫什么叫什么）
+        socket.emit('getAllMessages');
+    });
+    function format(msgObj) {
+        return `<span class="user">${msgObj.username}</span>:${msgObj.content}<button class="btn btn-danger" data-id="${msgObj._id}">删除</button><span class="pull-right">${msgObj.createAt}</span>`
+    }
+    //监听服务器发来的消息
+    socket.on('message',function (msgObj) {
+
+        //创建li元素
+        var li=document.createElement('li');
+        //加入内容
+        li.innerHTML=format(msgObj);
+        li.className='list-group-item';
+        //把li添加到ul中
+        messagesUl.appendChild(li);
+    });
+    //点击按钮
+    function send() {
+
+        var content=contentInput.value;
+        //把此消息发送给服务器，告诉他有人发言,相当于emit（‘messagr’，content）
+        socket.send(content);
+    }
+    socket.on('allMessages',function (messages) {
+        var html='';
+        messages.forEach(function (msgObj) {
+            html+=`<li class="list-group-item">${format(msgObj)}</li>`
+        });
+        messagesUl.innerHTML=html;
+    });
+    //事件委托
+    function selectedUser(event) {
+        if(event.target.className=='user'){
+            //获取点击是事件源的内容
+            var username=event.target.innerText;
+            contentInput.value=`@${username} `
+        }else if(event.target.className=='btn btn-danger'){
+            var id=event.target.dataset.id;
+            socket.emit('delete',id);
+        }
+
+    }
+
+
+
+
+    function join(roomName) {
+        socket.emit('join',roomName);
+
+    }
+    socket.on('deleted',function (id) {
+
+    })
+</script>
+</body>
+</html>
